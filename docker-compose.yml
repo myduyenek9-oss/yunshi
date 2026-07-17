@@ -1,0 +1,18 @@
+﻿services:
+  fortune-reminder:
+    build: .
+    container_name: fortune-reminder
+    restart: unless-stopped
+    env_file:
+      - .env
+    ports:
+      - "${APP_BIND_HOST:-127.0.0.1}:${APP_PORT:-8088}:${APP_PORT:-8088}"
+    volumes:
+      - ./data:/app/data
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:' + __import__('os').environ.get('APP_PORT', '8088') + '/health').read()"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 20s
+
