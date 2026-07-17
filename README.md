@@ -78,6 +78,7 @@ location /api/ {
 - `BIRTH_CALENDAR` 支持 `solar` 或 `lunar`。
 - `BIRTH_TIME` 用于计算时柱；如果时辰不准，生成结果也会提示准确性限制。
 - `OPENAI_MODEL` 可随时切换。
+- `OPENAI_BASE_URL` 用于 OpenAI 兼容中转站，通常以 `/v1` 结尾；使用官方 OpenAI 时留空。
 - `MOCK_AI=true` 只用于本地测试，不会调用 OpenAI。
 
 ## API
@@ -118,4 +119,3 @@ pytest
 ## 免责声明
 
 本项目生成内容仅供个人参考，不作为医疗、投资、法律等专业决策依据。
-
