@@ -373,3 +373,54 @@ docker compose up -d --build
 - [ ] 北京时间 08:00 自动任务已启动；
 - [ ] 生产环境关闭公网 8088，仅开放 22/80/443；
 - [ ] `.env` 权限为 600，真实密钥没有进入 Git。
+
+## 14. GitHub Actions 自动部署
+
+项目已经包含：
+
+```text
+.github/workflows/deploy.yml
+scripts/deploy-server.sh
+```
+
+工作流触发条件：向 `main` 分支 push，或在 GitHub Actions 页面手动运行。服务器端脚本会保留 `/opt/fortune-reminder/.env` 和 `/opt/fortune-reminder/data/`，不会从仓库覆盖服务器密钥和运行数据。
+
+### 14.1 服务器准备 SSH Key
+
+在服务器执行：
+
+```bash
+install -d -m 700 /root/.ssh
+ssh-keygen -t ed25519 -C "github-actions-fortune-reminder" -f /root/.ssh/github_actions_fortune -N ""
+cat /root/.ssh/github_actions_fortune.pub >> /root/.ssh/authorized_keys
+chmod 600 /root/.ssh/authorized_keys
+cat /root/.ssh/github_actions_fortune
+```
+
+将最后一条命令输出的私钥完整复制到 GitHub 仓库的 `Settings -> Secrets and variables -> Actions -> New repository secret`，名称为：
+
+```text
+ALIYUN_SSH_KEY
+```
+
+再新增以下 Secrets：
+
+```text
+ALIYUN_HOST=47.99.58.95
+ALIYUN_PORT=22
+ALIYUN_USER=root
+```
+
+`ALIYUN_SSH_KEY` 是私钥，不能提交到代码仓库、不能发到聊天中。服务器 `.env` 也不会进入 GitHub。
+
+### 14.2 测试自动部署
+
+本地提交并推送：
+
+```bash
+git add .
+git commit -m "test automatic deployment"
+git push origin main
+```
+
+然后打开 GitHub 仓库的 `Actions` 页面，查看 `Deploy fortune reminder` 工作流。成功后服务器会自动执行 Git 更新、Docker 重建和健康检查。

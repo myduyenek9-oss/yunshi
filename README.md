@@ -119,3 +119,7 @@ pytest
 ## 免责声明
 
 本项目生成内容仅供个人参考，不作为医疗、投资、法律等专业决策依据。
+
+## GitHub Actions 自动部署
+
+项目包含 `.github/workflows/deploy.yml` 和 `scripts/deploy-server.sh`。配置 GitHub Secrets 后，每次推送到 `main` 分支会通过 SSH 登录阿里云，保留服务器 `.env` 和 `data/`，重新构建容器并检查 `/health`。具体配置见 `DEPLOYMENT.md`。

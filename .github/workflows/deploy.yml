@@ -1,0 +1,39 @@
+name: Deploy fortune reminder
+
+on:
+  push:
+    branches: ["main"]
+  workflow_dispatch:
+
+concurrency:
+  group: fortune-reminder-production
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout deployment script
+        uses: actions/checkout@v4
+
+      - name: Deploy over SSH
+        env:
+          DEPLOY_HOST: ${{ secrets.ALIYUN_HOST }}
+          DEPLOY_PORT: ${{ secrets.ALIYUN_PORT }}
+          DEPLOY_USER: ${{ secrets.ALIYUN_USER }}
+          DEPLOY_KEY: ${{ secrets.ALIYUN_SSH_KEY }}
+        run: |
+          set -Eeuo pipefail
+          : "${DEPLOY_HOST:?Missing ALIYUN_HOST secret}"
+          : "${DEPLOY_USER:?Missing ALIYUN_USER secret}"
+          : "${DEPLOY_KEY:?Missing ALIYUN_SSH_KEY secret}"
+          DEPLOY_PORT="${DEPLOY_PORT:-22}"
+          install -d -m 700 ~/.ssh
+          printf '%s\n' "$DEPLOY_KEY" > ~/.ssh/fortune_reminder_key
+          chmod 600 ~/.ssh/fortune_reminder_key
+          ssh-keyscan -p "$DEPLOY_PORT" -H "$DEPLOY_HOST" >> ~/.ssh/known_hosts
+          ssh -i ~/.ssh/fortune_reminder_key -p "$DEPLOY_PORT" \
+            -o StrictHostKeyChecking=yes \
+            "${DEPLOY_USER}@${DEPLOY_HOST}" \
+            'APP_DIR=/opt/fortune-reminder REPO_URL=https://github.com/myduyenek9-oss/yunshi.git BRANCH=main bash -s' \
+            < scripts/deploy-server.sh
