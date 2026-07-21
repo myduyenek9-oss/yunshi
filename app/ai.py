@@ -37,6 +37,37 @@ def _context_json(context: dict[str, Any]) -> str:
     return json.dumps(context, ensure_ascii=False, indent=2)
 
 
+def _create_chat_completion_with_fallback(
+    settings: Settings,
+    *,
+    messages: list[dict[str, str]],
+    temperature: float,
+) -> str:
+    client = _client(settings)
+    errors: list[str] = []
+    models = settings.openai_model_candidates()
+    for model in models:
+        try:
+            response = client.chat.completions.create(
+                model=model,
+                messages=messages,
+                temperature=temperature,
+                stream=False,
+                max_tokens=1800,
+            )
+            return _extract_openai_text(response)
+        except Exception as exc:
+            errors.append(f"{model}: {exc}")
+            if model == models[-1]:
+                raise AIResponseError(
+                    'AI 生成失败，已尝试模型：'
+                    + '、'.join(models)
+                    + '。最后错误：'
+                    + str(exc)
+                ) from exc
+    raise AIResponseError('AI 生成失败：没有可用模型。')
+
+
 def _extract_openai_text(response: Any) -> str:
     """Extract assistant text from OpenAI-compatible responses.
 
@@ -248,16 +279,14 @@ def generate_daily_report(settings: Settings, context: dict[str, Any]) -> str:
 上下文 JSON：
 {_context_json(context)}
 """.strip()
-    response = _client(settings).chat.completions.create(
-        model=settings.openai_model,
+    return _create_chat_completion_with_fallback(
+        settings,
         messages=[
             {"role": "system", "content": SYSTEM_PROMPT},
             {"role": "user", "content": user_prompt},
         ],
         temperature=0.8,
-        stream=False,
     )
-    return _extract_openai_text(response)
 
 
 def answer_question(settings: Settings, context: dict[str, Any], question: str, last_summary: str | None = None) -> str:
@@ -287,13 +316,11 @@ def answer_question(settings: Settings, context: dict[str, Any], question: str, 
 上下文 JSON：
 {_context_json(context)}
 """.strip()
-    response = _client(settings).chat.completions.create(
-        model=settings.openai_model,
+    return _create_chat_completion_with_fallback(
+        settings,
         messages=[
             {"role": "system", "content": SYSTEM_PROMPT},
             {"role": "user", "content": user_prompt},
         ],
         temperature=0.7,
-        stream=False,
     )
-    return _extract_openai_text(response)

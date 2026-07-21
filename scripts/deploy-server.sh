@@ -34,6 +34,17 @@ if [[ ! -f "${APP_DIR}/.env" ]]; then
   exit 1
 fi
 
+
+# Non-secret compatibility default for the current OpenAI-compatible relay.
+# Keeps the app working if the primary model returns an empty SSE response.
+if ! grep -q '^OPENAI_FALLBACK_MODELS=' "${APP_DIR}/.env"; then
+  if grep -Fq 'ai.yxkl.cloud' "${APP_DIR}/.env"; then
+    printf '\nOPENAI_FALLBACK_MODELS=gpt-5.4,gpt-5.6-luna,gpt-5.6-terra\n' >> "${APP_DIR}/.env"
+    chmod 600 "${APP_DIR}/.env"
+    echo "[deploy] added OPENAI_FALLBACK_MODELS for relay compatibility"
+  fi
+fi
+
 mkdir -p "${APP_DIR}/data"
 cd "${APP_DIR}"
 

@@ -23,6 +23,7 @@ class Settings(BaseSettings):
     mock_ai: bool = Field(default=False, alias="MOCK_AI")
     openai_api_key: str = Field(default="", alias="OPENAI_API_KEY")
     openai_model: str = Field(default="gpt-4o-mini", alias="OPENAI_MODEL")
+    openai_fallback_models: str = Field(default="", alias="OPENAI_FALLBACK_MODELS")
     openai_base_url: str = Field(default="", alias="OPENAI_BASE_URL")
 
     dingtalk_webhook: str = Field(default="", alias="DINGTALK_WEBHOOK")
@@ -71,6 +72,14 @@ class Settings(BaseSettings):
             return
         if not self.openai_api_key or self.openai_api_key.startswith("your-"):
             raise RuntimeError("OPENAI_API_KEY is not configured; set MOCK_AI=true for local testing")
+
+    def openai_model_candidates(self) -> list[str]:
+        models: list[str] = []
+        for model in [self.openai_model, *self.openai_fallback_models.split(",")]:
+            model = model.strip()
+            if model and model not in models:
+                models.append(model)
+        return models
 
     @field_validator("openai_base_url")
     @classmethod
