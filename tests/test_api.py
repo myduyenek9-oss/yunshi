@@ -79,3 +79,31 @@ def test_fortune_page_hides_mismatched_profile(monkeypatch) -> None:
     assert response.status_code == 200
     assert "OLD_PROFILE_RESULT" not in response.text
     assert "lastContent" in response.text
+
+
+def test_extract_openai_text_accepts_plain_string_response() -> None:
+    from app.ai import _extract_openai_text
+
+    assert _extract_openai_text("直接返回的文本") == "直接返回的文本"
+
+
+def test_extract_openai_text_accepts_dict_response() -> None:
+    from app.ai import _extract_openai_text
+
+    response = {"choices": [{"message": {"content": "字典格式回答"}}]}
+    assert _extract_openai_text(response) == "字典格式回答"
+
+
+def test_extract_openai_text_accepts_object_response() -> None:
+    from app.ai import _extract_openai_text
+
+    class Message:
+        content = "对象格式回答"
+
+    class Choice:
+        message = Message()
+
+    class Response:
+        choices = [Choice()]
+
+    assert _extract_openai_text(Response()) == "对象格式回答"

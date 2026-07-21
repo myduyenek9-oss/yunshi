@@ -1,4 +1,4 @@
-﻿from __future__ import annotations
+from __future__ import annotations
 
 import json
 from typing import Any
@@ -30,6 +30,84 @@ def _client(settings: Settings) -> OpenAI:
 
 def _context_json(context: dict[str, Any]) -> str:
     return json.dumps(context, ensure_ascii=False, indent=2)
+
+
+def _extract_openai_text(response: Any) -> str:
+    """Extract assistant text from OpenAI-compatible responses.
+
+    Some relay/proxy providers return plain strings or dictionaries instead of
+    the official SDK ChatCompletion object. Keep the app usable across those
+    OpenAI-compatible variants instead of crashing with "str has no choices".
+    """
+    if response is None:
+        return ""
+
+    if isinstance(response, str):
+        text = response.strip()
+        if text.startswith("{") or text.startswith("["):
+            try:
+                parsed = json.loads(text)
+            except json.JSONDecodeError:
+                return response
+            return _extract_openai_text(parsed)
+        return response
+
+    if isinstance(response, dict):
+        if isinstance(response.get("output_text"), str):
+            return response["output_text"]
+        choices = response.get("choices") or []
+        if choices:
+            first = choices[0]
+            if isinstance(first, str):
+                return first
+            if isinstance(first, dict):
+                message = first.get("message")
+                if isinstance(message, dict):
+                    content = message.get("content")
+                    return _content_to_text(content)
+                if isinstance(first.get("text"), str):
+                    return first["text"]
+        if isinstance(response.get("content"), str):
+            return response["content"]
+        return json.dumps(response, ensure_ascii=False)
+
+    output_text = getattr(response, "output_text", None)
+    if isinstance(output_text, str):
+        return output_text
+
+    choices = getattr(response, "choices", None) or []
+    if choices:
+        first = choices[0]
+        if isinstance(first, str):
+            return first
+        message = getattr(first, "message", None)
+        if message is not None:
+            return _content_to_text(getattr(message, "content", None))
+        text = getattr(first, "text", None)
+        if isinstance(text, str):
+            return text
+
+    return str(response)
+
+
+def _content_to_text(content: Any) -> str:
+    if content is None:
+        return ""
+    if isinstance(content, str):
+        return content
+    if isinstance(content, list):
+        parts: list[str] = []
+        for item in content:
+            if isinstance(item, str):
+                parts.append(item)
+            elif isinstance(item, dict):
+                text = item.get("text")
+                if isinstance(text, str):
+                    parts.append(text)
+                elif isinstance(text, dict) and isinstance(text.get("value"), str):
+                    parts.append(text["value"])
+        return "".join(parts)
+    return str(content)
 
 
 def _mock_daily_report(context: dict[str, Any]) -> str:
@@ -123,7 +201,7 @@ def generate_daily_report(settings: Settings, context: dict[str, Any]) -> str:
         ],
         temperature=0.8,
     )
-    return response.choices[0].message.content or ""
+    return _extract_openai_text(response)
 
 
 def answer_question(settings: Settings, context: dict[str, Any], question: str, last_summary: str | None = None) -> str:
@@ -161,4 +239,4 @@ def answer_question(settings: Settings, context: dict[str, Any], question: str, 
         ],
         temperature=0.7,
     )
-    return response.choices[0].message.content or ""
+    return _extract_openai_text(response)
