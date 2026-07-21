@@ -44,6 +44,10 @@ def _extract_openai_text(response: Any) -> str:
 
     if isinstance(response, str):
         text = response.strip()
+        if text.startswith("data:") or "\ndata:" in text:
+            sse_text = _extract_sse_text(text)
+            if sse_text:
+                return sse_text
         if text.startswith("{") or text.startswith("["):
             try:
                 parsed = json.loads(text)
@@ -108,6 +112,47 @@ def _content_to_text(content: Any) -> str:
                     parts.append(text["value"])
         return "".join(parts)
     return str(content)
+
+
+def _extract_sse_text(text: str) -> str:
+    parts: list[str] = []
+    for line in text.splitlines():
+        line = line.strip()
+        if not line.startswith("data:"):
+            continue
+        payload = line.removeprefix("data:").strip()
+        if not payload or payload == "[DONE]":
+            continue
+        try:
+            event = json.loads(payload)
+        except json.JSONDecodeError:
+            continue
+
+        if isinstance(event, dict):
+            choices = event.get("choices") or []
+            if choices:
+                first = choices[0]
+                if isinstance(first, dict):
+                    delta = first.get("delta")
+                    if isinstance(delta, dict):
+                        content = delta.get("content")
+                        if isinstance(content, str):
+                            parts.append(content)
+                            continue
+                    message = first.get("message")
+                    if isinstance(message, dict):
+                        content = message.get("content")
+                        if isinstance(content, str):
+                            parts.append(content)
+                            continue
+                    text_value = first.get("text")
+                    if isinstance(text_value, str):
+                        parts.append(text_value)
+                        continue
+            output_text = event.get("output_text")
+            if isinstance(output_text, str):
+                parts.append(output_text)
+    return "".join(parts).strip()
 
 
 def _mock_daily_report(context: dict[str, Any]) -> str:

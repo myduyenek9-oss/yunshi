@@ -107,3 +107,14 @@ def test_extract_openai_text_accepts_object_response() -> None:
         choices = [Choice()]
 
     assert _extract_openai_text(Response()) == "对象格式回答"
+
+
+def test_extract_openai_text_accepts_sse_stream_string() -> None:
+    from app.ai import _extract_openai_text
+
+    response = '\n'.join([
+        'data: {"choices":[{"delta":{"content":"第一段"}}]}',
+        'data: {"choices":[{"delta":{"content":"第二段"}}]}',
+        'data: [DONE]',
+    ])
+    assert _extract_openai_text(response) == "第一段第二段"
