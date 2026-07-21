@@ -5,6 +5,11 @@ from typing import Any
 
 from openai import OpenAI
 
+
+class AIResponseError(RuntimeError):
+    """Raised when the AI provider returns no usable assistant text."""
+
+
 from .config import Settings
 
 SYSTEM_PROMPT = """
@@ -48,6 +53,11 @@ def _extract_openai_text(response: Any) -> str:
             sse_text = _extract_sse_text(text)
             if sse_text:
                 return sse_text
+            raise AIResponseError(
+                "AI ????????????????????"
+                "??? OPENAI_MODEL ??????????/??????????"
+                "?? .env ?????????????"
+            )
         if text.startswith("{") or text.startswith("["):
             try:
                 parsed = json.loads(text)
@@ -245,6 +255,7 @@ def generate_daily_report(settings: Settings, context: dict[str, Any]) -> str:
             {"role": "user", "content": user_prompt},
         ],
         temperature=0.8,
+        stream=False,
     )
     return _extract_openai_text(response)
 
@@ -283,5 +294,6 @@ def answer_question(settings: Settings, context: dict[str, Any], question: str, 
             {"role": "user", "content": user_prompt},
         ],
         temperature=0.7,
+        stream=False,
     )
     return _extract_openai_text(response)

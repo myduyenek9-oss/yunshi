@@ -118,3 +118,16 @@ def test_extract_openai_text_accepts_sse_stream_string() -> None:
         'data: [DONE]',
     ])
     assert _extract_openai_text(response) == "第一段第二段"
+
+
+def test_extract_openai_text_rejects_empty_sse_stream_string() -> None:
+    import pytest
+
+    from app.ai import AIResponseError, _extract_openai_text
+
+    response = '\n'.join([
+        'data: {"choices":[],"usage":{"completion_tokens":0}}',
+        'data: [DONE]',
+    ])
+    with pytest.raises(AIResponseError):
+        _extract_openai_text(response)
