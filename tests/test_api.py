@@ -139,8 +139,8 @@ def test_fortune_page_declares_ios_icon(monkeypatch) -> None:
         response = client.get("/fortune?token=test-token")
     assert response.status_code == 200
     assert 'rel="apple-touch-icon"' in response.text
-    assert '/apple-touch-icon.png' in response.text
-    assert '/manifest.webmanifest?token=test-token&v=20260722' in response.text
+    assert '/apple-touch-icon.png?v=20260722b' in response.text
+    assert '/manifest.webmanifest?token=test-token&v=20260722b' in response.text
 
 
 def test_manifest_and_icon(monkeypatch) -> None:
