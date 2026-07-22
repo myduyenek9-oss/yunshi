@@ -3,12 +3,14 @@ from __future__ import annotations
 import html
 import json
 import logging
+from pathlib import Path
 from contextlib import asynccontextmanager
 from datetime import datetime
 from zoneinfo import ZoneInfo
 
 from fastapi import Depends, FastAPI, Header, HTTPException, Query, status
-from fastapi.responses import HTMLResponse
+from fastapi.responses import FileResponse, HTMLResponse, JSONResponse
+from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
 
 from .ai import answer_question, generate_daily_report
@@ -21,6 +23,8 @@ logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s [%(nam
 logger = logging.getLogger(__name__)
 
 scheduler = None
+APP_DIR = Path(__file__).resolve().parent
+STATIC_DIR = APP_DIR / "static"
 
 
 @asynccontextmanager
@@ -39,6 +43,7 @@ async def lifespan(app: FastAPI):
 
 
 app = FastAPI(title="Fortune Reminder", version="1.0.0", lifespan=lifespan)
+app.mount("/static", StaticFiles(directory=STATIC_DIR), name="static")
 
 
 class AskRequest(BaseModel):
@@ -136,6 +141,7 @@ def _fortune_page_html(*, token: str, settings: Settings, last_report: str, last
     template = template_path.read_text(encoding="utf-8-sig")
     replacements = {
         "__TOKEN__": json.dumps(token, ensure_ascii=False),
+        "__TOKEN_RAW__": html.escape(token, quote=True),
         "__LAST_REPORT__": json.dumps(last_report, ensure_ascii=False),
         "__LAST_DATE__": json.dumps(last_date, ensure_ascii=False),
         "__PROFILE__": json.dumps(profile, ensure_ascii=False),
@@ -145,6 +151,36 @@ def _fortune_page_html(*, token: str, settings: Settings, last_report: str, last
         template = template.replace(key, value)
     return template.strip()
 
+
+
+@app.get("/favicon.ico", include_in_schema=False)
+def favicon() -> FileResponse:
+    return FileResponse(STATIC_DIR / "icons" / "favicon.ico")
+
+
+@app.get("/manifest.webmanifest", include_in_schema=False)
+def manifest(token: str = Query(default=""), settings: Settings = Depends(_settings)) -> JSONResponse:
+    start_url = "/fortune"
+    if token and token == settings.web_access_token:
+        start_url = f"/fortune?token={token}"
+    return JSONResponse(
+        media_type="application/manifest+json",
+        content={
+            "name": "\u4e2a\u4eba\u8fd0\u52bf\u9762\u677f",
+            "short_name": "\u8fd0\u52bf",
+            "description": "\u6bcf\u65e5\u516b\u5b57\u8fd0\u52bf\u63d0\u9192\u4e0e\u95ee\u7b54",
+            "start_url": start_url,
+            "scope": "/",
+            "display": "standalone",
+            "orientation": "portrait",
+            "background_color": "#f7ead1",
+            "theme_color": "#8d2f24",
+            "icons": [
+                {"src": "/static/icons/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any maskable"},
+                {"src": "/static/icons/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any maskable"},
+            ],
+        },
+    )
 
 
 @app.get("/health")
