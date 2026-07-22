@@ -139,8 +139,8 @@ def test_fortune_page_declares_ios_icon(monkeypatch) -> None:
         response = client.get("/fortune?token=test-token")
     assert response.status_code == 200
     assert 'rel="apple-touch-icon"' in response.text
-    assert '/static/icons/apple-touch-icon.png' in response.text
-    assert '/manifest.webmanifest?token=test-token' in response.text
+    assert '/apple-touch-icon.png' in response.text
+    assert '/manifest.webmanifest?token=test-token&v=20260722' in response.text
 
 
 def test_manifest_and_icon(monkeypatch) -> None:
@@ -156,3 +156,20 @@ def test_manifest_and_icon(monkeypatch) -> None:
     assert any(item["src"] == "/static/icons/icon-512.png" for item in data["icons"])
     assert icon.status_code == 200
     assert icon.headers["content-type"] == "image/png"
+
+
+def test_root_apple_icon_aliases(monkeypatch) -> None:
+    _configure(monkeypatch)
+    paths = [
+        "/apple-touch-icon.png",
+        "/apple-touch-icon-precomposed.png",
+        "/apple-touch-icon-180x180.png",
+        "/apple-touch-icon-152x152.png",
+        "/apple-touch-icon-120x120.png",
+        "/favicon.ico",
+    ]
+    with TestClient(app) as client:
+        for path in paths:
+            response = client.get(path)
+            assert response.status_code == 200, path
+            assert response.content, path

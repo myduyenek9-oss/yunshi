@@ -153,9 +153,46 @@ def _fortune_page_html(*, token: str, settings: Settings, last_report: str, last
 
 
 
+def _icon_response(filename: str, media_type: str = "image/png") -> FileResponse:
+    return FileResponse(
+        STATIC_DIR / "icons" / filename,
+        media_type=media_type,
+        headers={
+            # iOS aggressively caches home-screen icons. Keep browser/CDN caches short
+            # while the icon is still being tuned, so replacing an old site icon is easier.
+            "Cache-Control": "public, max-age=300",
+        },
+    )
+
+
 @app.get("/favicon.ico", include_in_schema=False)
 def favicon() -> FileResponse:
-    return FileResponse(STATIC_DIR / "icons" / "favicon.ico")
+    return _icon_response("favicon.ico", media_type="image/x-icon")
+
+
+@app.get("/apple-touch-icon.png", include_in_schema=False)
+def apple_touch_icon() -> FileResponse:
+    return _icon_response("apple-touch-icon.png")
+
+
+@app.get("/apple-touch-icon-precomposed.png", include_in_schema=False)
+def apple_touch_icon_precomposed() -> FileResponse:
+    return _icon_response("apple-touch-icon.png")
+
+
+@app.get("/apple-touch-icon-180x180.png", include_in_schema=False)
+def apple_touch_icon_180() -> FileResponse:
+    return _icon_response("apple-touch-icon.png")
+
+
+@app.get("/apple-touch-icon-152x152.png", include_in_schema=False)
+def apple_touch_icon_152() -> FileResponse:
+    return _icon_response("apple-touch-icon.png")
+
+
+@app.get("/apple-touch-icon-120x120.png", include_in_schema=False)
+def apple_touch_icon_120() -> FileResponse:
+    return _icon_response("apple-touch-icon.png")
 
 
 @app.get("/manifest.webmanifest", include_in_schema=False)
